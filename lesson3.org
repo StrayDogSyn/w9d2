@@ -1,0 +1,405 @@
+#+TITLE: Introduction to Machine Learning: Modeling, Training and Evaluation
+#+AUTHOR: Evan Misshula
+#+DATE: \today
+#+LANGUAGE: en
+
+#+LATEX_HEADER: \usepackage[style=apa, backend=biber]{biblatex}
+#+LATEX_HEADER: \DeclareLanguageMapping{american}{american-apa}
+#+LATEX_HEADER: \addbibresource{./refs/refs.bib}
+#+LATEX_HEADER: \AtEveryBibitem{\clearfield{note}}
+#+LATEX_HEADER: \usepackage{./jtc}
+#+STARTUP: beamer
+#+OPTIONS: H:2 toc:nil num:t
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [aspectratio=169]
+#+COLUMNS: %45ITEM %10BEAMER_ENV(Env) %10BEAMER_ACT(Act) %4BEAMER_COL(Col) %8BEAMER_OPT(Opt)
+g
+#+name: initialize_lang
+#+source: configuration
+#+begin_src emacs-lisp :results output :exports none
+    (require 'ob-mermaid)
+    (setq ob-mermaid-cli-path "/home/evan/.nvm/versions/node/v20.1.0/bin/mmdc")
+    ;; Doesn't work
+	       ;; first it is necessary to ensure that Org-mode loads support for the
+		;; languages used by code blocks in this article
+		(org-babel-do-load-languages
+		 'org-babel-load-languages
+		 '(
+		   (ditaa      . t)     
+		   (dot        . t)
+		   (emacs-lisp . t)
+		   (haskell    . t)
+		   (org        . t)
+		   (perl       . t)
+		   (python     . t)
+		   (R          . t)
+		   (ruby       . t)
+		   (plantuml   . t)
+		   (mermaid    . t)
+		   (sqlite     . t)))
+		;; then we'll remove the need to confirm evaluation of each code
+		;; block, NOTE: if you are concerned about execution of malicious code
+		;; through code blocks, then comment out the following line
+	    (add-to-list 'org-src-lang-modes '("plantuml" . plantuml))
+	    (setq org-confirm-babel-evaluate nil)
+	      (setq org-ditaa-jar-path "/usr/bin/ditaa")
+	      (setq org-plantuml-jar-path "/usr/share/plantuml/plantuml.jar")
+	      (add-to-list 'exec-path "/home/evan/.nvm/versions/node/v20.1.0/bin")
+	;;      (setq org-mermaid-jar-path "/home/evan/.nvm/versions/node/v20.1.0/lib/node_modules/@mermaid-js/mermaid-cli/node_modules/mermaid
+	;;    ")
+      (setenv "PATH" (concat (getenv "PATH") ":/home/evan/.nvm/versions/node/v20.1.0/bin"))
+      (add-to-list 'exec-path "/home/evan/.nvm/versions/node/v20.1.0/bin")
+
+	     (setenv "PUPPETEER_EXECUTABLE_PATH" "/usr/bin/google-chrome-stable")
+	     (setenv "PUPPETEER_DISABLE_SANDBOX" "1")
+    (setq org-babel-mermaid-cli-path "/home/evan/.nvm/versions/node/v20.1.0/bin/mmdc")
+
+(setq org-preview-latex-default-process 'dvipng)
+(setq org-preview-latex-process-alist
+      '((dvipng :programs ("latex" "dvipng")
+                :description "dvi > png using dvipng"
+                :message "You need to install latex and dvipng"
+                :image-input-type "dvi"
+                :image-output-type "png"
+                :image-size-adjust (1.0 . 1.0)
+                :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
+                :image-converter ("dvipng -D 300 -T tight -o %O %f"))))
+
+(setq org-preview-latex-image-directory "ltximg/")
+
+      ;; Add LaTeX block template and scaling
+      (with-eval-after-load 'org
+	(add-to-list 'org-structure-template-alist '("e" . "latex"))
+	(plist-put org-format-latex-options :scale 3.0))
+
+
+	     (setenv "PATH" (concat "/home/evan/.nvm/versions/node/v20.1.0/bin:" (getenv "PATH")))
+	      ;; finally we'll customize the default behavior of Org-mode code blocks
+		;; so that they can be used to display examples of Org-mode syntax
+		(setf org-babel-default-header-args:org '((:exports . "code")))
+		(setq org-babel-inline-result-wrap '%s)
+		;; This gets rid of the wrapping around the results of evaluated org mode 
+		;; in line code
+		(setq reftex-default-bibliography '("/home/emisshula/proposal/mybib.bib"))
+		(setq org-latex-prefer-user-labels t)
+    ;;    (plist-put org-format-latex-options :scale 3.0)
+	(global-set-key (kbd "C-c e") 'insEq)
+#+end_src
+
+#+RESULTS: configuration
+
+* Workflow
+** End to end process                                          :B_definition:
+:PROPERTIES:
+:BEAMER_env: definition
+:END:
+Recall *ML workflow* is a sequence of steps to build and deploy a model that
+solves a problem using data.
+
+** The pipeline                                                     :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+| Ingestion & Preprocessing | Analysis            | *Modeling*   | Deployment |
+|---------------------------+---------------------+--------------+------------|
+| Definition                | EDA                 | *Selection*  | Tuning     |
+| Data Collection           | Feature Engineering | *Training*   | Deployment |
+| Cleaning                  |                     | *Evaluation* | Monitoring |
+
+** ML Workflow Graph                                                :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+#+CAPTION: ML workflow steps rendered as a flowchart
+#+ATTR_LATEX: :width=0.8\linewidth
+[[file:workflow.png]]
+
+
+#+begin_src mermaid :file workflow.png  :exports results
+  graph LR
+    A[Ingestion] --> B[Analysis]
+    B --> C[Modeling]
+    C --> D[Deployment]
+#+end_src
+
+#+RESULTS:
+[[file:workflow.png]]
+
+* Training
+** What is Model Training?                                          :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- The goal is to find a function \( f_\theta \) that can accurately
+  predict labels \( y \) from features \( x \).
+- Model training is the process of estimating parameters $\theta$ of a model $f_\theta(x)$ using data $\{(x_i, y_i)\}_{i=1}^n$.
+- Typically achieved by minimizing a loss function:
+  \begin{equation}
+  \hat{\theta} = \arg\min_\theta \frac{1}{n} \sum_{i=1}^n \mathcal{L}(f_\theta(x_i), y_i)
+  \end{equation}
+- Common loss functions:
+  - **Squared error loss** (regression): $\mathcal{L}(\hat{y}, y) = (\hat{y} - y)^2$
+  - **Cross-entropy loss** (classification): 
+\begin{equation}
+    \mathcal{L}(\hat{y}, y) = -\sum_{c} \1_{\{y = c\}} \log \hat{p}_c
+\end{equation}
+
+
+* Loss Functions
+** Cross-Entropy Loss (Classification)
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+The cross-entropy loss measures how well a predicted probability
+distribution \( \hat{p} \) matches the true label \( y \).
+
+For a multiclass classification problem:
+\begin{equation}
+\mathcal{L}(\hat{y}, y) = -\sum_{c=1}^C \mathds{1}_{\{y = c\}} \log \hat{p}_c
+\end{equation}
+
+- \( \hat{p}_c \): predicted probability for class \( c \)
+- \( y \): true class label
+- Only the log probability of the true class contributes to the loss.
+
+** Binary Cross-Entropy Example
+\begin{equation}
+\mathcal{L}(\hat{y}, y) = -[y \log(\hat{y}) + (1 - y) \log(1 - \hat{y})]
+\end{equation}
+
+** Interpretation
+- Penalizes confident wrong predictions heavily.
+- Encourages models to predict probabilities that reflect the actual distribution.
+
+
+
+** Training vs Generalization                                       :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- *Empirical risk* (training error):
+  \begin{equation}
+  \hat{R}(\theta) = \frac{1}{n} \sum_{i=1}^n \mathcal{L}(f_\theta(x_i), y_i)
+  \end{equation}
+- *Expected risk* (true/generalization error):
+  \begin{equation}
+  R(\theta) = \mathbb{E}_{(x,y) \sim \mathcal{D}} \left[ \mathcal{L}(f_\theta(x), y) \right]
+  \end{equation}
+- Generalization gap: $R(\theta) - \hat{R}(\theta)$
+- Overfitting: small $\hat{R}$, large $R$
+
+
+* Generalization and Expected Risk
+** What Is Expected Risk?                                           :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+The *expected risk* or *generalization error* is the average loss over the true data distribution \( \mathcal{D} \):
+
+\begin{equation}
+R(\theta) = \mathbb{E}_{(x,y) \sim \mathcal{D}} \left[ \mathcal{L}(f_\theta(x), y) \right]
+\end{equation}
+
+- \( \theta \): model parameters
+- \( f_\theta(x) \): model prediction
+- \( \mathcal{L} \): loss function (e.g., squared error)
+- \( \mathcal{D} \): unknown true distribution of the data
+
+** Why It Matters                                                   :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+- It tells us how well the model will perform *on new data*.
+- Since \( \mathcal{D} \) is unknown, we estimate it using validation or test sets.
+
+** Empirical vs Expected Risk                                       :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+| Risk Type         | Expression                                                                                  | Description              |
+|-------------------+----------------------------------------------------------------------------------------------+--------------------------|
+| Empirical Risk     | \( \hat{R}(\theta) = \frac{1}{n} \sum_{i=1}^{n} \mathcal{L}(f_\theta(x_i), y_i) \)         | Error on training data   |
+| Expected Risk      | \( R(\theta) = \mathbb{E}_{(x,y) \sim \mathcal{D}} [\mathcal{L}(f_\theta(x), y)] \)        | Error on all data        |
+
+- Goal: Minimize expected risk while avoiding overfitting.
+- Overfitting in practical terms means complicating the model so
+  that it lowers the Emperical Risk without lowering the Expected Risk  
+
+
+* Evaluation  
+** Evaluation Metrics                                               :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- In supervised learning, we evaluate how well our model predictions
+  \( \hat{y} \) match actual targets \( y \).
+
+- *Regression*:
+  - Mean Squared Error (MSE): 
+    \[
+    \text{MSE} = \frac{1}{n} \sum_{i=1}^n (\hat{y}_i - y_i)^2
+    \]
+  - $R^2$ score:
+    \[
+    R^2 = 1 - \frac{\sum_i (\hat{y}_i - y_i)^2}{\sum_i (y_i - \bar{y})^2}
+    \]
+
+- *Classification*:
+  - Accuracy: \(\text{Accuracy} = \frac{1}{n} \sum_{i=1}^n \mathds{1}_{\{\hat{y}_i = y_i\}}\)
+  - Precision: \(\frac{\text{TP}}{\text{TP} + \text{FP}}\)
+  - Recall: \(\frac{\text{TP}}{\text{TP} + \text{FN}}\)
+  - F1 score: harmonic mean of precision and recall
+    \[
+    F1 = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}
+    \]
+
+
+** Overview of Classification Metrics
+
+Different tasks prioritize different types of error.
+
+| Metric       | Measures                          | Use Case                                    |
+|--------------+-----------------------------------+---------------------------------------------|
+| Accuracy     | Overall correctness                | Balanced datasets                           |
+| Precision    | True positives among predicted pos | False positives are costly (e.g., spam)     |
+| Recall       | True positives among actual pos    | False negatives are costly (e.g., disease)  |
+| F1 Score     | Harmonic mean of P and R           | Imbalanced data, cost for FP and FN         |
+| ROC AUC      | Probabilistic ranking              | Model comparison, threshold tuning          |
+
+* Accuracy
+** Definition and Intuition
+\[
+\text{Accuracy} = \frac{TP + TN}{TP + FP + TN + FN}
+\]
+- Correct predictions / Total predictions
+- Best for balanced datasets
+
+* Precision and Recall
+** Precision
+\[
+\text{Precision} = \frac{TP}{TP + FP}
+\]
+- How many predicted positives are truly positive?
+- High precision = few false positives
+
+** Recall
+\[
+\text{Recall} = \frac{TP}{TP + FN}
+\]
+- How many actual positives were correctly predicted?
+- High recall = few false negatives
+
+* F1 Score
+** Balancing Precision and Recall
+\[
+F1 = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}
+\]
+- Harmonic mean of precision and recall
+- Use when both types of error matter
+- Good for imbalanced datasets
+
+* ROC and AUC
+** Receiver Operating Characteristic
+- Plot of True Positive Rate vs. False Positive Rate at various thresholds
+- Area Under Curve (AUC) ranges from 0.5 (random) to 1.0 (perfect)
+
+\[
+\text{TPR} = \frac{TP}{TP + FN}, \quad \text{FPR} = \frac{FP}{FP + TN}
+\]
+
+- AUC is threshold-independent
+- Use when you want to compare classifiers
+
+* Summary of classification metrics
+** Choosing the Right Metric
+
+- Accuracy: for balanced classes
+- Precision: when false positives are costly
+- Recall: when false negatives are costly
+- F1: when both matter, especially in imbalanced data
+- AUC: for ranking models across thresholds
+
+
+** Cross-Validation                                                 :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Cross-validation estimates generalization error by partitioning data.
+- *k-fold CV*:
+  - Split data into $k$ disjoint subsets.
+  - For each $i = 1, \ldots, k$:
+    - Train on $k-1$ folds
+    - Evaluate on fold $i$
+  - Average the evaluation metrics.
+
+** Bias-Variance Tradeoff                                           :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Expected prediction error at point $x$:
+  \[
+  \mathbb{E}[(f(x) - y)^2] = \underbrace{[\mathbb{E}(f(x)) - y]^2}_{\text{Bias}^2} + \underbrace{\mathbb{E}[(f(x) - \mathbb{E}(f(x)))^2]}_{\text{Variance}} + \underbrace{\sigma^2}_{\text{Irreducible error}}
+  \]
+- Simple models: low variance, high bias
+- Complex models: low bias, high variance
+
+** Model Selection                                                  :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Choose the best model using a *validation set* or *cross-validation*.
+- Avoid tuning hyperparameters using the test set.
+- Balance:
+  - Training error
+  - Generalization performance
+  - Computational cost
+
+* Model Selection and Tuning
+** Hyperparameter Tuning
+
+Some model settings are not learned from data but must be specified
+manually — these are *hyperparameters*.
+
+| Model               | Hyperparameter Examples               |
+|---------------------+---------------------------------------|
+| k-NN                | Number of neighbors \( k \)           |
+| Decision Tree       | Max depth, min samples per leaf       |
+| Lasso/Ridge         | Regularization strength \( \alpha \)  |
+| Neural Network      | Learning rate, batch size             |
+
+** Why Tune Hyperparameters?
+
+- Improve generalization
+- Prevent overfitting
+- Optimize computational efficiency
+
+** Best Practices
+
+- Use a *validation set* or *cross-validation* to evaluate each
+  setting.
+- Never use the *test set* for tuning — it must simulate unseen data.
+
+** Trade-offs
+
+- Training error vs validation error
+- Model complexity vs performance
+- Runtime vs accuracy
+
+** Tools
+
+- Grid search, random search, or Bayesian optimization
+
+** Summary Training and Evaluation                                  :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Training minimizes empirical loss.
+- Evaluation uses test or validation data.
+- Use metrics appropriate for the task.
+- Cross-validation provides robust error estimates.
+- The bias-variance tradeoff is fundamental in choosing models.

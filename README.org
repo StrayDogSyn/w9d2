@@ -1,0 +1,10 @@
+#+Title: Week 9 Day 2 Repo for Analysis Workflow and Linear Regression
+
+
+* Contents
+
+This repo contains two presentations Lesson3.pdf and LessonLR.pdf.  It
+also contains some live coding demos in the python directory.
+Furthermore it contains a breakout exercise in python and a scrambled
+key.  After you try you should unscramble it the same wqay as last
+night.

@@ -1,0 +1,453 @@
+#+TITLE: Introduction to Linear Regression (with Math and Python)
+#+AUTHOR: Evan Misshula
+#+DATE: \today
+#+LANGUAGE: en
+
+#+LATEX_HEADER: \usepackage[style=apa, backend=biber]{biblatex}
+#+LATEX_HEADER: \DeclareLanguageMapping{american}{american-apa}
+#+LATEX_HEADER: \addbibresource{./refs/refs.bib}
+#+LATEX_HEADER: \AtEveryBibitem{\clearfield{note}}
+#+LATEX_HEADER: \usepackage{endnotes}
+#+LATEX_HEADER: \let\footnote=\endnote
+#+LATEX_HEADER: \usepackage{./jtc}
+#+STARTUP: beamer
+#+OPTIONS: H:2 toc:nil num:t
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [aspectratio=169]
+#+COLUMNS: %45ITEM %10BEAMER_ENV(Env) %10BEAMER_ACT(Act) %4BEAMER_COL(Col) %8BEAMER_OPT(Opt)
+
+#+name: initialize_lang
+#+source: configuration
+#+begin_src emacs-lisp :results output :exports none
+    (require 'ob-mermaid)
+    (setq ob-mermaid-cli-path "/home/evan/.nvm/versions/node/v20.1.0/bin/mmdc")
+    ;; Doesn't work
+	       ;; first it is necessary to ensure that Org-mode loads support for the
+		;; languages used by code blocks in this article
+		(org-babel-do-load-languages
+		 'org-babel-load-languages
+		 '(
+		   (ditaa      . t)     
+		   (dot        . t)
+		   (emacs-lisp . t)
+		   (haskell    . t)
+		   (org        . t)
+		   (perl       . t)
+		   (python     . t)
+		   (R          . t)
+		   (ruby       . t)
+		   (plantuml   . t)
+		   (mermaid    . t)
+		   (sqlite     . t)))
+		;; then we'll remove the need to confirm evaluation of each code
+		;; block, NOTE: if you are concerned about execution of malicious code
+		;; through code blocks, then comment out the following line
+	    (add-to-list 'org-src-lang-modes '("plantuml" . plantuml))
+	    (setq org-confirm-babel-evaluate nil)
+	      (setq org-ditaa-jar-path "/usr/bin/ditaa")
+	      (setq org-plantuml-jar-path "/usr/share/plantuml/plantuml.jar")
+	      (add-to-list 'exec-path "/home/evan/.nvm/versions/node/v20.1.0/bin")
+	;;      (setq org-mermaid-jar-path "/home/evan/.nvm/versions/node/v20.1.0/lib/node_modules/@mermaid-js/mermaid-cli/node_modules/mermaid
+	;;    ")
+      (setenv "PATH" (concat (getenv "PATH") ":/home/evan/.nvm/versions/node/v20.1.0/bin"))
+      (add-to-list 'exec-path "/home/evan/.nvm/versions/node/v20.1.0/bin")
+
+	     (setenv "PUPPETEER_EXECUTABLE_PATH" "/usr/bin/google-chrome-stable")
+	     (setenv "PUPPETEER_DISABLE_SANDBOX" "1")
+    (setq org-babel-mermaid-cli-path "/home/evan/.nvm/versions/node/v20.1.0/bin/mmdc")
+
+(setq org-preview-latex-default-process 'dvipng)
+(setq org-preview-latex-process-alist
+      '((dvipng :programs ("latex" "dvipng")
+                :description "dvi > png using dvipng"
+                :message "You need to install latex and dvipng"
+                :image-input-type "dvi"
+                :image-output-type "png"
+                :image-size-adjust (1.0 . 1.0)
+                :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
+                :image-converter ("dvipng -D 300 -T tight -o %O %f"))))
+
+(setq org-preview-latex-image-directory "ltximg/")
+
+      ;; Add LaTeX block template and scaling
+      (with-eval-after-load 'org
+	(add-to-list 'org-structure-template-alist '("e" . "latex"))
+	(plist-put org-format-latex-options :scale 3.0))
+
+
+	     (setenv "PATH" (concat "/home/evan/.nvm/versions/node/v20.1.0/bin:" (getenv "PATH")))
+	      ;; finally we'll customize the default behavior of Org-mode code blocks
+		;; so that they can be used to display examples of Org-mode syntax
+		(setf org-babel-default-header-args:org '((:exports . "code")))
+		(setq org-babel-inline-result-wrap '%s)
+		;; This gets rid of the wrapping around the results of evaluated org mode 
+		;; in line code
+		(setq reftex-default-bibliography '("/home/emisshula/proposal/mybib.bib"))
+		(setq org-latex-prefer-user-labels t)
+    ;;    (plist-put org-format-latex-options :scale 3.0)
+	(global-set-key (kbd "C-c e") 'insEq)
+#+end_src
+
+#+RESULTS: configuration
+
+
+
+* Motivation & Intuition
+** Why Learn Linear Regression?                                     :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+- Linear regression is the most basic and interpretable predictive model.
+- It helps understand relationships between variables.
+- Applications: housing prices, student performance, stock trends.
+
+* Mathematical Foundations
+** The Linear Model                                                 :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+  Let \(\hat{y} = w_0 + w_1 x_1 + \dots + w_p x_p\).
+  In vector form: \(\hat{y} = \mathbf{x}^\top \mathbf{w}\).
+
+** Terms and Concepts                                               :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+
+- \(y\): dependent variable (response)
+- \(\mathbf{x}\): feature vector (independent variables)
+- \(\mathbf{w}\): coefficients (weights)
+- \(w_0\): intercept
+- \(\hat{y}\): predicted value 
+- Loss Function
+*** Mean Squared Error (MSE)
+\(\text{MSE} = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2\)
+  Minimizing this loss gives the best linear fit.
+
+  
+- Analytical Solution
+** Derivation
+We want to minimize the MSE:
+
+\begin{equation}
+L(\mathbf{w}) = \| \mathbf{y} - \mathbf{X} \mathbf{w} \|^2 = (\mathbf{y} - \mathbf{X} \mathbf{w})^\top (\mathbf{y} - \mathbf{X} \mathbf{w})
+\end{equation}
+
+Take the gradient with respect to \( \mathbf{w} \):
+
+\begin{equation}
+\nabla_{\mathbf{w}} L = -2 \mathbf{X}^\top (\mathbf{y} - \mathbf{X} \mathbf{w})
+\end{equation}
+
+Set the gradient to zero:
+
+\begin{equation}
+\mathbf{X}^\top (\mathbf{y} - \mathbf{X} \mathbf{w}) = 0
+\end{equation}
+
+\begin{equation}
+\Rightarrow \mathbf{X}^\top \mathbf{y} = \mathbf{X}^\top \mathbf{X} \mathbf{w}
+\end{equation}
+
+\begin{equation}
+\Rightarrow \hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}
+\end{equation}
+
+
+\end{document}
+
+* Python code for Linear Regression
+** Let's impliment this in python                                   :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+  [Live Code 1]
+- Visualization
+  ** Fitted Line and Residuals
+* Plot data and regression line.
+** Show residuals (errors) as vertical lines.                       :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+  [Live Code 2]
+
+
+* Model Evaluation
+** How good is our model?
+*** R^2 Score
+  $R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2}$
+
+
+* \(R^2\) (Coefficient of Determination)
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- Measures proportion of variance in the dependent variable explained by the model:
+  \begin{equation}
+  R^2 = 1 - \frac{\text{SS}_{\text{res}}}{\text{SS}_{\text{tot}}}
+  \end{equation}
+
+*** ✅ Pluses
+- Intuitive: tells how well the model fits the data.
+- Easy to compute and compare (when using the same dataset).
+- Widely accepted and supported.
+
+*** ❌ Minuses
+- Increases with more predictors — even if they're irrelevant.
+- Can be misleading in the presence of overfitting.
+
+** Adjusted \(R^2\)                                                  :B_note:
+:PROPERTIES:
+:BEAMER_env: note
+:END:
+
+- Penalizes complexity by adjusting for number of predictors:
+  \begin{equation}
+  \text{Adjusted } R^2 = 1 - \left( \frac{(1 - R^2)(n - 1)}{n - p - 1} \right)
+  \end{equation}
+  where:
+  - \( n \): number of observations  
+  - \( p \): number of predictors
+
+*** ✅ Pluses
+- Corrects for overfitting from adding more predictors.
+- More reliable for model comparison with different feature sets.
+- Encourages parsimony.
+
+*** ❌ Minuses
+- Still assumes linear relationships and well-behaved errors.
+- Not immune to issues like multicollinearity.
+- Slightly harder to interpret than plain \( R^2 \).
+
+** When to Use Which?
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+| Situation                      | Recommended Metric      |
+|--------------------------------+-------------------------|
+| Same predictors                | \( R^2 \)               |
+| Different number of predictors | Adjusted \( R^2 \)      |
+| Concerned about overfitting    | Adjusted \( R^2 \)      |
+| Nonlinear or complex models    | Use AIC, RMSE, or CrVal |
+  
+
+* Assumptions of Linear Regression
+
+** Core Assumptions                                                 :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Linearity: Relationship between predictors and response is linear.
+- Independence: Observations are independent.
+- Homoscedasticity: Constant variance of residuals.
+- Normality: Residuals are normally distributed (for inference).
+- No multicollinearity: Predictors are not highly correlated.
+
+** Why These Matter                                                 :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Violations can lead to biased estimates, misleading inference, or
+  poor predictive performance.
+
+* What Can Go Wrong?
+
+** Nonlinearity                                                     :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Model assumes straight-line relationship.
+- Violation leads to systematic errors in residuals.
+- *Fix:* Try polynomial features or nonlinear models.
+
+** Heteroscedasticity                                               :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Residual variance increases or decreases with \( x \).
+- Leads to inefficient estimates and unreliable confidence intervals.
+- *Fix:* Try transforming \( y \), or use robust regression.
+
+** Heteroscedasticity                                               :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- The variance of residuals is not constant across all levels of \( x
+  \).
+- Common symptoms:
+  - Fan-shaped residual plots
+  - Non-random patterns in residuals
+- Consequences:
+  - Coefficient estimates remain unbiased.
+  - Standard errors are biased \(\rightarrow\) unreliable hypothesis
+    tests and confidence intervals.
+
+** Fix #1: Transform the Response Variable                          :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Apply a transformation to stabilize variance.
+- Common choices:
+  - Log transform: \( y' = \log(y) \)
+  - Square root: \( y' = \sqrt{y} \)
+  - Box-Cox: Estimate the best transformation parameter \( \lambda \)
+
+** Fix #2: Use Robust Standard Errors                               :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Keep the model but adjust inference to account for
+  heteroscedasticity.
+- White's heteroscedasticity-consistent standard errors (Huber-White).
+
+** White's Robust Standard Errors                                   :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Adjust the variance-covariance matrix:
+  \[
+  \widehat{\text{Var}}_{\text{robust}}(\hat{\beta}) = (\mathbf{X}^\top \mathbf{X})^{-1} \left( \sum_{i=1}^n \hat{\varepsilon}_i^2 \mathbf{x}_i \mathbf{x}_i^\top \right) (\mathbf{X}^\top \mathbf{X})^{-1}
+  \]
+- Uses squared residuals to estimate variability per observation.
+
+* Py
+
+** Fix #3: Weighted Least Squares (WLS)
+- Weight each observation inversely to its error variance.
+- Requires a model or estimate for the variance.
+
+** Summary: Handling Heteroscedasticity                             :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Always visualize residuals vs fitted values.
+- Use transformations to stabilize variance.
+- Use robust regression or WLS when transformations are not appropriate.  
+
+** Multicollinearity
+- Predictors are highly correlated.
+- Makes coefficient estimates unstable.
+- *Fix:* Create an Index or Remove/reduce correlated variables, or use
+  regularization (e.g. Ridge, Lasso).
+
+** Outliers
+- Data points far from trend can skew fit.
+- *Fix:* Visualize residuals, use robust methods or remove if unjustified.
+
+** Autocorrelation
+- Residuals are correlated (often in time series).
+- Violates independence assumption.
+- *Fix:* Use time series models (e.g., ARIMA), check with Durbin-Watson test.
+
+* Summary
+
+- Always *visualize residuals*.
+- Test assumptions early and often.
+- Consider model alternatives when assumptions are violated.
+
+
+** Assumptions and violations
+- Assumptions and Pitfalls
+  ** What Can Go Wrong?
+
+* Nonlinearity
+* Heteroscedasticity
+* Multicollinearity
+* Outliers
+* Autocorrelation
+
+
+- Linear regression is based on assumptions about the data.
+- If these assumptions are violated, the model’s predictions and
+  inference (e.g., confidence intervals) may be unreliable.
+- It’s important to *diagnose and address violations* early.
+
+** Assumption: Linearity                                           :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- The relationship between input \( x \) and output \( y \) is linear:
+  \[
+  y = \beta_0 + \beta_1 x_1 + \dots + \beta_p x_p + \varepsilon
+  \]
+- *Violation (Nonlinearity)*:
+  - Real-world relationships may be curved or complex.
+  - Linear regression cannot capture these patterns.
+- *Fix*:
+  - Add polynomial features or interaction terms.
+  - Use a nonlinear model (e.g., decision trees).
+
+** Assumption: Homoscedasticity                                   :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- Constant variance of errors \( \varepsilon \) across all values of \( x \).
+- *Violation (Heteroscedasticity)*:
+  - Variance increases or decreases with \( x \).
+  - Leads to inefficient estimates and biased standard errors.
+- *Fix*:
+  - Log or Box-Cox transform the target \( y \).
+  - Use robust standard errors (e.g., White’s correction).
+
+** Assumption: No Multicollinearity                               :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- Features (columns of \( X \)) should not be highly correlated.
+- *Violation (Multicollinearity)*:
+  - Causes unstable estimates and inflated standard errors.
+- *Fix*:
+  - Remove or combine correlated features.
+  - Use regularization (e.g., Ridge or Lasso regression).
+
+** Assumption: No Outliers                                         :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- Assumes no extreme values that distort the fit.
+- *Violation (Outliers)*:
+  - Can pull the regression line disproportionately.
+- *Fix*:
+  - Identify with residual plots or Cook’s distance.
+  - Consider robust regression or remove problematic rows.
+
+** Assumption: No Autocorrelation                                  :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+- Residuals should be independent (especially in time series).
+- *Violation (Autocorrelation)*:
+  - Errors are correlated across observations (e.g., in stock prices).
+- *Fix*:
+  - Use time series models (e.g., ARIMA).
+  - Add lag variables or time-based features.
+
+** Summary of Common Violations                                    :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+
+| Assumption          | Violation            | Fix                                       |
+|---------------------+----------------------+-------------------------------------------|
+| Linearity           | Nonlinear patterns   | Add polynomial terms, use nonlinear model |
+| Homoscedasticity    | Heteroscedasticity   | Transform \( y \), use robust errors      |
+| No Multicollinearity| Correlated features  | Drop/merge features, use Ridge/Lasso      |
+| No Outliers         | Extreme values       | Remove or use robust regression           |
+| No Autocorrelation  | Dependent residuals  | Use time-aware models or lag variables    |
+
+- Always perform **residual analysis** to test assumptions.
+
+
+- Summary
+
+* Linear regression is interpretable and foundational.
+* Understand the math: model, loss, and solution.
+* Evaluate carefully with visual and numeric diagnostics.
