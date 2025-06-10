@@ -51,7 +51,7 @@ plt.figure(figsize=(10, 8))
 sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
 plt.title("Correlation Matrix")
 plt.tight_layout()
-plt.savefig("/mnt/data/correlation_matrix.png")
+plt.savefig("data/correlation_matrix.png")
 
 # 3. Visualize Features vs Target
 features_to_plot = ["MedInc", "AveRooms", "HouseAge", "AveOccup"]
@@ -59,7 +59,7 @@ for feature in features_to_plot:
     plt.figure()
     sns.scatterplot(data=df, x=feature, y="MedHouseVal", alpha=0.5)
     plt.title(f"{feature} vs Median House Value")
-    plt.savefig(f"/mnt/data/scatter_{feature}.png")
+    plt.savefig(f"data/scatter_{feature}.png")
 
 # 4. Split the data
 X_train, X_test, y_train, y_test = train_test_split(
@@ -89,7 +89,7 @@ plt.figure()
 sns.histplot(residuals, kde=True)
 plt.title("Distribution of Residuals")
 plt.xlabel("Residual")
-plt.savefig("/mnt/data/residual_distribution.png")
+plt.savefig("data/residual_distribution.png")
 
 plt.figure()
 plt.scatter(y_pred, residuals, alpha=0.5)
@@ -97,6 +97,6 @@ plt.axhline(0, color="red", linestyle="--")
 plt.xlabel("Predicted")
 plt.ylabel("Residual")
 plt.title("Residuals vs Predicted Values")
-plt.savefig("/mnt/data/residuals_vs_predicted.png")
+plt.savefig("data/residuals_vs_predicted.png")
 
 print("\nVisualizations saved as PNG files.")
