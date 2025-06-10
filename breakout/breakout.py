@@ -32,8 +32,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 
 # Load the dataset
-data = fetch_california_housing(as_frame=True)
-df = data.frame
+# Ignore type checking for this specific line due to sklearn API
+housing_data = fetch_california_housing(as_frame=True)  # type: ignore
+df = housing_data.frame  # type: ignore
 
 # Add feature names and target
 X = df.drop(columns="MedHouseVal")
