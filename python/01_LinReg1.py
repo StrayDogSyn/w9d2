@@ -11,7 +11,7 @@ w0, w1, w2 = 5, 3, -2
 y = w0 + w1 * X1 + w2 * X2 + noise
 
 # Design matrix with intercept
-X = np.column_stack((np.ones(n_samples), X1, X2))
+X = np.column_stack([np.ones(n_samples), X1, X2])
 
 ## Step 2: Analytical Solution
 
@@ -30,7 +30,7 @@ print("Estimated coefficients:", w_hat)
 from sklearn.linear_model import LinearRegression
 
 model = LinearRegression(fit_intercept=True)
-X_no_intercept = np.column_stack((X1, X2))  # scikit-learn adds intercept by default
+X_no_intercept = np.column_stack([X1, X2])  # scikit-learn adds intercept by default
 model.fit(X_no_intercept, y)
 
 print("Intercept:", model.intercept_)
@@ -43,17 +43,17 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+ax = fig.add_subplot(111, projection='3d')  # type: ignore
 ax.scatter(X1, X2, y, color='blue', label='Data')
 
 
 x1_grid, x2_grid = np.meshgrid(np.linspace(-3, 3, 30), np.linspace(-3, 3, 30))
 y_grid = model.intercept_ + model.coef_[0]*x1_grid + model.coef_[1]*x2_grid
 
-ax.plot_surface(x1_grid, x2_grid, y_grid, color='orange', alpha=0.5)
+ax.plot_surface(x1_grid, x2_grid, y_grid, color='orange', alpha=0.5)  # type: ignore
 ax.set_xlabel("X1")
 ax.set_ylabel("X2")
-ax.set_zlabel("y")
+ax.set_zlabel("y")  # type: ignore
 ax.set_title("Linear Regression Fit")
 plt.legend()
 plt.show()

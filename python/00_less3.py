@@ -6,14 +6,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 
 # Load data
-data = load_wine()
-X = data.data
-y = data.target
-target_names = data.target_names
+data = load_wine()  # type: ignore
+X = data.data  # type: ignore
+y = data.target  # type: ignore
+target_names = data.target_names  # type: ignore
 # Print out the prediction goal
 print("Goal: Predict wine class (target) from chemical features (predictors).")
 print(f"Target classes: {list(target_names)}")
-print(f"Feature names: {list(data.feature_names)}")
+print(f"Feature names: {list(data.feature_names)}")  # type: ignore
 
 # Step 2: Standardize the feature matrix
 scaler = StandardScaler()
